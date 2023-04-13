@@ -1,0 +1,65 @@
+#!/bin/bash
+
+series_file="/home/liuqichen/Documents/series.txt"
+
+if [ $# -lt 1 ]; then
+    echo "Usage: nextep <subcommand> [args]"
+    echo "Subcommands:"
+    echo "  add <series_name>: Add a new series to the list"
+    echo "  list: List all added series"
+    echo "  query <series_number>: Get the next episode for a specific series"
+    exit 1
+fi
+
+case "$1" in
+    add)
+        if [ $# -ne 2 ]; then
+            echo "Usage: nextep add <series_name>"
+            exit 1
+        fi
+        echo "$2" >> "$series_file"
+        echo "Series added: $2"
+        ;;
+    list)
+        if [ ! -f "$series_file" ]; then
+            echo "No series found"
+            exit 1
+        fi
+        echo "Series list:"
+        while read -r series_name; do
+            next_ep=$(curl -s "https://next-episode.net/$series_name" | grep -o '<span style="background-color:.*padding:.*color:.*border-radius:.*">.*</span>' | sed 's/<[^>]*>//g')
+            if [[ -z "$next_ep" ]]; then
+                echo "$series_name: No upcoming episode"
+            else
+                days=$(echo "$next_ep" | grep -o '[0-9]\+ day[s]\?' | sed 's/ days\?//g')
+                hours=$(echo "$next_ep" | grep -o '[0-9]\+ hour[s]\?' | sed 's/ hours\?//g')
+                echo "$series_name: ${days:-0} days ${hours:-0} hours"
+            fi
+        done < "$series_file" | awk '{printf "%d. %s\n", NR, $0}'
+        ;;
+    query)
+        if [ $# -ne 2 ]; then
+            echo "Usage: nextep query <series_number>"
+            exit 1
+        fi
+        if [ ! -f "$series_file" ]; then
+            echo "No series found"
+            exit 1
+        fi
+        series=$(awk "NR == $2" "$series_file")
+        if [ -z "$series" ]; then
+            echo "Invalid series number"
+            exit 1
+        fi
+        url="https://next-episode.net/$series"
+        result=$(curl -s "$url")
+        text=$(echo "$result" | grep -o '<span style="background-color:.*padding:.*color:.*border-radius:.*">.*</span>' | sed 's/<[^>]*>//g')
+        echo "Next Episode of $series:"
+        echo "$text"
+        ;;
+    *)
+        echo "Invalid subcommand"
+        exit 1
+        ;;
+esac
+
