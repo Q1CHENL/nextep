@@ -1,5 +1,6 @@
 # nextep
 Find out when the next episode of your favorite show comes</br>
+Data source: [Next Episode]https://next-episode.net/
 ```
 nextep add detective-conan
 nextep add the-rookie
